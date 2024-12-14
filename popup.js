@@ -1,18 +1,57 @@
-// 获取选中的文本并显示
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === "showPopup") {
-    document.getElementById("textContent").textContent = request.text;
+class QuoteGenerator {
+  constructor() {
+    this.textContent = document.getElementById("textContent");
+    this.saveButton = document.getElementById("save");
+    this.init();
   }
-});
 
-// 保存图片
-document.getElementById("save").addEventListener("click", () => {
-  // 使用html2canvas将内容转换为图片
-  const preview = document.getElementById("preview");
-  html2canvas(preview).then(canvas => {
-    const link = document.createElement("a");
-    link.download = "quote.png";
-    link.href = canvas.toDataURL();
-    link.click();
-  });
+  async init() {
+    try {
+      // 获取存储的文本
+      const data = await chrome.storage.local.get('selectedText');
+      if (data.selectedText) {
+        this.textContent.textContent = data.selectedText;
+      } else {
+        // 如果存储中没有，尝试从当前页面获取
+        const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
+        if (tab?.id) {
+          try {
+            const response = await chrome.tabs.sendMessage(tab.id, {
+              action: "getSelection"
+            });
+            if (response?.text) {
+              this.textContent.textContent = response.text;
+            }
+          } catch (err) {
+            console.log('No selection available');
+          }
+        }
+      }
+
+      // 绑定事件
+      this.saveButton.addEventListener('click', () => this.generateImage());
+    } catch (err) {
+      console.error('Initialization failed:', err);
+    }
+  }
+
+  async generateImage() {
+    try {
+      const preview = document.getElementById("preview");
+      if (!preview) throw new Error('Preview element not found');
+
+      const canvas = await html2canvas(preview);
+      const link = document.createElement("a");
+      link.download = "quote.png";
+      link.href = canvas.toDataURL();
+      link.click();
+    } catch (err) {
+      console.error('Failed to generate image:', err);
+    }
+  }
+}
+
+// 初始化
+document.addEventListener('DOMContentLoaded', () => {
+  new QuoteGenerator();
 }); 

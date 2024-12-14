@@ -1,12 +1,8 @@
-// 监听来自background的消息
+// 监听消息
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "getSelection") {
-    const selectedText = window.getSelection().toString();
-    if (selectedText && selectedText.length <= 500) {
-      chrome.runtime.sendMessage({
-        action: "showPopup",
-        text: selectedText
-      });
-    }
+    const selectedText = window.getSelection().toString().slice(0, 500);
+    sendResponse({ text: selectedText });
   }
+  return true;
 }); 
